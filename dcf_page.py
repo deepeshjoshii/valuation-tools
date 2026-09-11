@@ -55,7 +55,7 @@ LAKH_CR = 100_000  # 1 Lakh Crore, expressed in Cr units
 # ============================================================
 # PAGE CONFIG + THEME (identical palette to the Beta Calculator)
 # ============================================================
-from theme import THEMES, searchbox_style, render_disclaimer
+from theme import THEMES, searchbox_style, render_disclaimer, PLOTLY_CONFIG
 
 if "theme" not in st.session_state:
     st.session_state.theme = "dark"
@@ -293,7 +293,7 @@ def render_flow_chart(edited_series: list, last_period_label, trajectory, termin
         xaxis=dict(tickmode="array", tickvals=x_idx, ticktext=all_labels, tickangle=-45),
         yaxis_title=f"{title} (Rs Cr)", height=420, margin=dict(t=60), showlegend=False,
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
     if show_terminal_extension:
         st.caption(
             "Grey = actual historical figures, teal = the required-CAGR projection being solved for, "
@@ -653,7 +653,7 @@ if ticker:
                                 title=f"Required CAGR across discount-rate x {x_title.lower()} assumptions",
                                 height=280, margin=dict(t=50, b=20),
                             )
-                            st.plotly_chart(fig_sens, use_container_width=True)
+                            st.plotly_chart(fig_sens, use_container_width=True, config=PLOTLY_CONFIG)
                             st.caption("Blank cells (—) mean the assumptions in that cell make no CAGR solvable within the search range.")
 
                             with st.expander("Assumptions used in this run"):

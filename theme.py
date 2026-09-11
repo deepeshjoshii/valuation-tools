@@ -152,6 +152,21 @@ a.tool-tile .tile-cta {{ color: {T['accent']}; font-weight: 600; }}
 """
 
 
+# Applied to every st.plotly_chart(..., config=PLOTLY_CONFIG) call across the
+# app. Two mobile-specific problems this fixes:
+#   1. displayModeBar/displaylogo: Plotly's built-in zoom/pan toolbar has no
+#      good place to sit on a narrow screen and ends up overlapping the chart
+#      title - simplest fix is to not show it at all rather than fight for
+#      layout space.
+#   2. scrollZoom: False - without this, Plotly intercepts a scroll gesture
+#      that starts on top of the chart and uses it to zoom the chart instead
+#      of letting the page scroll, which feels like the page "getting stuck".
+#      Desktop users still get zoom via click-drag box-select (the default
+#      dragmode), they just lose scroll-to-zoom, which most people don't rely
+#      on outside of mobile pinch gestures anyway.
+PLOTLY_CONFIG = {"displayModeBar": False, "displaylogo": False, "scrollZoom": False}
+
+
 def searchbox_style(T: dict) -> dict:
     """Streamlit-searchbox style overrides, parameterized on the active theme."""
     return {

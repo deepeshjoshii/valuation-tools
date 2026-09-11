@@ -44,7 +44,7 @@ def searchbox_fragment(search_fn, **kwargs):
 # st.navigation hands off to this page - both apply globally across pages,
 # so they're not repeated here. THEMES/searchbox_style now live in theme.py,
 # the single shared source both pages import from.
-from theme import THEMES, searchbox_style, render_disclaimer
+from theme import THEMES, searchbox_style, render_disclaimer, PLOTLY_CONFIG
 
 if "theme" not in st.session_state:
     st.session_state.theme = "dark"
@@ -399,7 +399,7 @@ with tab_beta:
                            title=f"Stock vs Benchmark Returns  ·  {interval1_display} returns, last {result['period']}",
                            xaxis_title="Index return", yaxis_title="Stock return",
                            height=400, margin=dict(t=40))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
         st.caption("Shaded band = 95% confidence interval for the fitted regression line itself "
                     "(narrower near the middle of the data, wider at the extremes) — not the same "
                     "as the beta coefficient's own CI shown above.")
@@ -432,7 +432,7 @@ with tab_beta:
                                 title=f"Rolling Beta  ·  trailing {window}-observation window "
                                       f"(~{window_months:.0f} months), {interval1_display.lower()} steps",
                                 yaxis_title="Beta", height=350, margin=dict(t=40))
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, use_container_width=True, config=PLOTLY_CONFIG)
             st.markdown(
                 f"<div style='text-align:center;'>"
                 f"<span style='color:{T['amber']}; font-weight:700;'>●</span> Full-period beta: "
@@ -554,7 +554,7 @@ with tab_beta:
                                   paper_bgcolor=T["bg"], plot_bgcolor=T["bg"],
                                   title=f"{bench} — beta by lookback × frequency", height=220,
                                   margin=dict(t=40, b=20))
-            st.plotly_chart(fig_hm, use_container_width=True)
+            st.plotly_chart(fig_hm, use_container_width=True, config=PLOTLY_CONFIG)
 
         with st.expander("Raw table + CSV download"):
             st.dataframe(df_sens, use_container_width=True)

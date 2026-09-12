@@ -291,7 +291,7 @@ def render_flow_chart(edited_series: list, last_period_label, trajectory, termin
     fig.update_layout(
         template=PLOT_TEMPLATE, paper_bgcolor=T["bg"], plot_bgcolor=T["bg"],
         xaxis=dict(tickmode="array", tickvals=x_idx, ticktext=all_labels, tickangle=-45),
-        yaxis_title=f"{title} (Rs Cr)", height=420, margin=dict(t=60), showlegend=False,
+        yaxis_title=f"{title} (Rs Cr)", dragmode=False, height=420, margin=dict(t=60, b=10), showlegend=False,
     )
     st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
     if show_terminal_extension:
@@ -651,7 +651,7 @@ if ticker:
                                 template=PLOT_TEMPLATE, paper_bgcolor=T["bg"], plot_bgcolor=T["bg"],
                                 xaxis_title=x_title, yaxis_title=rate_label,
                                 title=f"Required CAGR across discount-rate x {x_title.lower()} assumptions",
-                                height=280, margin=dict(t=50, b=20),
+                                dragmode=False, height=280, margin=dict(t=50, b=10),
                             )
                             st.plotly_chart(fig_sens, use_container_width=True, config=PLOTLY_CONFIG)
                             st.caption("Blank cells (—) mean the assumptions in that cell make no CAGR solvable within the search range.")

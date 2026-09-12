@@ -55,7 +55,7 @@ LAKH_CR = 100_000  # 1 Lakh Crore, expressed in Cr units
 # ============================================================
 # PAGE CONFIG + THEME (identical palette to the Beta Calculator)
 # ============================================================
-from theme import THEMES, searchbox_style, render_disclaimer, PLOTLY_CONFIG
+from theme import THEMES, searchbox_style, render_disclaimer, PLOTLY_CONFIG, friendly_error, show_error_detail
 
 if "theme" not in st.session_state:
     st.session_state.theme = "dark"
@@ -337,10 +337,11 @@ if ticker:
             fetch_error = None
         except Exception as e:
             data = None
-            fetch_error = str(e)
+            fetch_error = e
 
     if fetch_error:
-        st.error(f"Couldn't fetch data for '{ticker}': {fetch_error}. Check the ticker symbol.")
+        st.error(friendly_error(fetch_error, ticker))
+        show_error_detail(fetch_error)
     elif data.price is None and data.market_cap is None and not any(
         [data.historical_fcff, data.historical_net_income, data.historical_fcfe]
     ):

@@ -148,23 +148,38 @@ a.tool-tile:hover {{
 a.tool-tile h3 {{ color: {T['text']}; margin-top: 0; }}
 a.tool-tile p {{ color: {T['text_muted']}; }}
 a.tool-tile .tile-cta {{ color: {T['accent']}; font-weight: 600; }}
+/* Peer-set table (Bottom-Up Beta tab) - by default Streamlit stacks
+   st.columns() vertically once the screen is too narrow for all of them
+   side by side, which turns this into an unreadable list of labels on
+   mobile. Instead, force the row to stay horizontal and let the container
+   scroll sideways - a swipe, not a stack. Targets a specific container via
+   st.container(key="peer_table") in beta_page.py. */
+.st-key-peer_table {{
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}}
+.st-key-peer_table div[data-testid="stHorizontalBlock"] {{
+    flex-wrap: nowrap !important;
+    min-width: 620px;
+}}
 </style>
 """
 
 
 # Applied to every st.plotly_chart(..., config=PLOTLY_CONFIG) call across the
-# app. Two mobile-specific problems this fixes:
-#   1. displayModeBar/displaylogo: Plotly's built-in zoom/pan toolbar has no
-#      good place to sit on a narrow screen and ends up overlapping the chart
-#      title - simplest fix is to not show it at all rather than fight for
-#      layout space.
-#   2. scrollZoom: False - without this, Plotly intercepts a scroll gesture
-#      that starts on top of the chart and uses it to zoom the chart instead
-#      of letting the page scroll, which feels like the page "getting stuck".
-#      Desktop users still get zoom via click-drag box-select (the default
-#      dragmode), they just lose scroll-to-zoom, which most people don't rely
-#      on outside of mobile pinch gestures anyway.
-PLOTLY_CONFIG = {"displayModeBar": False, "displaylogo": False, "scrollZoom": False}
+# app. What each setting does:
+#   - displayModeBar: "hover" - shows the zoom/pan toolbar on mouse hover
+#     (useful on a PC/laptop), but touch devices have no hover state, so on
+#     mobile it effectively never appears and can't overlap the title.
+#   - displaylogo: False - drops the Plotly logo button from that toolbar.
+#   - scrollZoom: False - a scroll/wheel gesture over the chart no longer
+#     zooms it, so scrolling past a chart on mobile just scrolls the page.
+# Pair this with dragmode=False in each figure's own update_layout (below) -
+# that's what actually stops a finger-swipe across the chart from being
+# read as a box-zoom drag (the "box with two lines" selection). Desktop
+# users can still click the toolbar's zoom/pan buttons to turn that back on
+# for a specific chart when they want it.
+PLOTLY_CONFIG = {"displayModeBar": "hover", "displaylogo": False, "scrollZoom": False}
 
 
 def searchbox_style(T: dict) -> dict:

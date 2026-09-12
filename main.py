@@ -13,6 +13,9 @@ dcf_page.py) assume this has already happened and don't repeat it.
 import streamlit as st
 
 from theme import THEMES, get_custom_css
+from meta_tags import patch_meta_tags
+
+patch_meta_tags()
 
 st.set_page_config(page_title="Deepesh's Valuation Tools", layout="wide", page_icon="📈")
 

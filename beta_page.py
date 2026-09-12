@@ -164,14 +164,22 @@ GLOSSARY = {
 
 
 def info_icon(key: str) -> str:
-    """Small circled-i with a native browser tooltip (title attribute) - no
-    JS, no extra component, works identically in light and dark mode."""
+    """Small circled-i whose glossary text opens in a tap/click/keyboard-
+    accessible popover (native HTML <details>/<summary>, no JS). Replaces an
+    earlier title-attribute version: title="" only shows on genuine mouse
+    hover, so it was silently unusable on any touch device and unreachable
+    via keyboard - this version opens on tap, click, or Enter/Space when
+    focused, and toggles closed the same way."""
     text = GLOSSARY.get(key, "").replace('"', "&quot;")
     return (
-        f"<span title=\"{text}\" style='cursor:help; color:{T['text_muted']}; "
-        f"font-size:10px; border:1px solid {T['text_muted']}; border-radius:50%; "
-        f"width:13px; height:13px; display:inline-flex; align-items:center; justify-content:center; "
-        f"margin-left:5px; vertical-align:middle;'>i</span>"
+        f"<details class='info-popover' style='display:inline-block; vertical-align:middle; margin-left:5px;'>"
+        f"<summary style='display:inline-flex; align-items:center; justify-content:center; "
+        f"cursor:pointer; color:{T['text_muted']}; font-size:10px; "
+        f"border:1px solid {T['text_muted']}; border-radius:50%; width:13px; height:13px;'>i</summary>"
+        f"<div style='margin-top:4px; padding:8px 10px; background:{T['surface1']}; "
+        f"border:1px solid {T['border']}; border-radius:8px; font-size:12px; font-weight:400; "
+        f"line-height:1.4; color:{T['text']}; max-width:300px; white-space:normal;'>{text}</div>"
+        f"</details>"
     )
 
 

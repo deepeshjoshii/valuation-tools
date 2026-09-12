@@ -162,6 +162,12 @@ a.tool-tile .tile-cta {{ color: {T['accent']}; font-weight: 600; }}
     flex-wrap: nowrap !important;
     min-width: 620px;
 }}
+/* info_icon()'s <details>/<summary> popover - strip the default disclosure
+   triangle every browser adds to <summary>, since here it's styled to look
+   like a plain circled-i button, not an expand/collapse arrow. */
+.info-popover summary {{ list-style: none; }}
+.info-popover summary::-webkit-details-marker {{ display: none; }}
+.info-popover summary::marker {{ content: ""; }}
 </style>
 """
 

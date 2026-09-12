@@ -179,7 +179,21 @@ a.tool-tile .tile-cta {{ color: {T['accent']}; font-weight: 600; }}
 # read as a box-zoom drag (the "box with two lines" selection). Desktop
 # users can still click the toolbar's zoom/pan buttons to turn that back on
 # for a specific chart when they want it.
-PLOTLY_CONFIG = {"displayModeBar": "hover", "displaylogo": False, "scrollZoom": False}
+#   - doubleClickDelay: 600 - Plotly's double-click-to-reset detection is
+#     timing- and pixel-sensitive by default (300ms window) and is a known
+#     source of "it took me 5-6 tries" complaints across Plotly apps
+#     generally, not something specific to this app. Widening the window
+#     to 600ms makes it noticeably more forgiving.
+#   - modeBarButtonsToRemove: drops the box-select/lasso-select tools, which
+#     this app never uses for selection - keeps the toolbar (zoom, pan,
+#     zoom in/out, autoscale, download) focused. The "Reset axes" (house
+#     icon) and "Autoscale" buttons both do the same job as double-click in
+#     a single, reliable click - worth using instead of double-click when
+#     precision matters.
+PLOTLY_CONFIG = {
+    "displayModeBar": "hover", "displaylogo": False, "scrollZoom": False,
+    "doubleClickDelay": 600, "modeBarButtonsToRemove": ["select2d", "lasso2d"],
+}
 
 
 def searchbox_style(T: dict) -> dict:

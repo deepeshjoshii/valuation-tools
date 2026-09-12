@@ -196,6 +196,40 @@ PLOTLY_CONFIG = {
 }
 
 
+def friendly_error(e: Exception, ticker: str = "") -> str:
+    """Turns a caught exception into a message written for a site visitor,
+    not a developer. Used in `except Exception` blocks around data
+    fetches/calculations, where the raw exception could be a network error,
+    a yfinance-internal message, or anything else unanticipated - none of
+    which read well shown directly on a public page.
+
+    Deliberately narrow: only recognizes a few common failure signatures
+    (connection issues, "no data" from yfinance) and gives everything else
+    a single honest fallback rather than guessing at more patterns. Pair
+    this with show_error_detail() below so the raw text is still one click
+    away for debugging, not hidden entirely.
+    """
+    msg = str(e).lower()
+    who = f"'{ticker}'" if ticker else "this"
+    if any(s in msg for s in ("connection", "timeout", "max retries", "temporarily unavailable")):
+        return "Couldn't reach Yahoo Finance — it may be temporarily unavailable. Try again in a moment."
+    if any(s in msg for s in ("no data found", "no price data", "possibly delisted", "not found")):
+        return (f"No data found for {who} — check the ticker symbol is correct and still listed "
+                f"(NSE/BSE tickers need a .NS or .BO suffix, e.g. RELIANCE.NS).")
+    return (f"Something went wrong fetching or calculating data for {who}. This usually means the "
+            f"ticker doesn't exist, has too little price history, or Yahoo Finance is temporarily "
+            f"unavailable — try again, or double-check the ticker symbol.")
+
+
+def show_error_detail(e: Exception):
+    """Raw exception text, tucked into a collapsed expander rather than
+    shown inline - available for anyone (including you) who wants to see
+    exactly what failed, without putting technical text in front of every
+    visitor by default."""
+    with st.expander("Technical details"):
+        st.code(str(e))
+
+
 def searchbox_style(T: dict) -> dict:
     """Streamlit-searchbox style overrides, parameterized on the active theme."""
     return {

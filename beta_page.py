@@ -398,7 +398,8 @@ with tab_beta:
         fig.update_layout(template=plot_template, paper_bgcolor=T["bg"], plot_bgcolor=T["bg"],
                            title=f"Stock vs Benchmark Returns  ·  {interval1_display} returns, last {result['period']}",
                            xaxis_title="Index return", yaxis_title="Stock return",
-                           height=400, margin=dict(t=40))
+                           legend=dict(orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5),
+                           dragmode=False, height=430, margin=dict(t=40, b=10))
         st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
         st.caption("Shaded band = 95% confidence interval for the fitted regression line itself "
                     "(narrower near the middle of the data, wider at the extremes) — not the same "
@@ -431,7 +432,7 @@ with tab_beta:
             fig2.update_layout(template=plot_template, paper_bgcolor=T["bg"], plot_bgcolor=T["bg"],
                                 title=f"Rolling Beta  ·  trailing {window}-observation window "
                                       f"(~{window_months:.0f} months), {interval1_display.lower()} steps",
-                                yaxis_title="Beta", height=350, margin=dict(t=40))
+                                yaxis_title="Beta", dragmode=False, height=350, margin=dict(t=40, b=10))
             st.plotly_chart(fig2, use_container_width=True, config=PLOTLY_CONFIG)
             st.markdown(
                 f"<div style='text-align:center;'>"
@@ -552,8 +553,9 @@ with tab_beta:
             ))
             fig_hm.update_layout(template=chart_template,
                                   paper_bgcolor=T["bg"], plot_bgcolor=T["bg"],
-                                  title=f"{bench} — beta by lookback × frequency", height=220,
-                                  margin=dict(t=40, b=20))
+                                  title=f"{bench} — beta by lookback × frequency",
+                                  dragmode=False, height=220,
+                                  margin=dict(t=40, b=10))
             st.plotly_chart(fig_hm, use_container_width=True, config=PLOTLY_CONFIG)
 
         with st.expander("Raw table + CSV download"):
@@ -654,34 +656,35 @@ with tab_bottomup:
 
         if st.session_state.peers:
             st.markdown("**Peer set**")
-            header = st.columns([0.6, 2, 1.5, 1.5, 1, 0.7])
-            header[0].markdown("**Use**")
-            header[1].markdown("**Ticker**")
-            header[2].markdown("**Book D/E**")
-            header[3].markdown("**Eff. Tax Rate**")
-            header[4].markdown("**Source**")
-            header[5].markdown("**Remove**")
+            with st.container(key="peer_table"):
+                header = st.columns([0.6, 2, 1.5, 1.5, 1, 0.7])
+                header[0].markdown("**Use**")
+                header[1].markdown("**Ticker**")
+                header[2].markdown("**Book D/E**")
+                header[3].markdown("**Eff. Tax Rate**")
+                header[4].markdown("**Source**")
+                header[5].markdown("**Remove**")
 
-            to_remove = None
-            for i, p in enumerate(st.session_state.peers):
-                row = st.columns([0.6, 2, 1.5, 1.5, 1, 0.7])
-                p["include"] = row[0].checkbox("", value=p["include"], key=f"inc_{i}", label_visibility="collapsed")
-                row[1].markdown(p["ticker"])
-                bs_date = p.get("balance_sheet_date")
-                de_help = f"Balance sheet date: {bs_date}" if bs_date else "Manually entered"
-                p["debt_equity"] = row[2].number_input("", value=float(p["debt_equity"]), step=0.05,
-                                                         key=f"de_{i}", label_visibility="collapsed", help=de_help)
-                tax_date = p.get("tax_statement_date")
-                tax_help = f"Income statement date: {tax_date}" if tax_date else "Manually entered"
-                p["tax_rate"] = row[3].number_input("", value=float(p["tax_rate"]), step=0.01,
-                                                     key=f"tax_{i}", label_visibility="collapsed", help=tax_help)
-                src_label = "auto" if p["de_source"] == "auto-fetched" else "manual"
-                row[4].caption(src_label)
-                if row[5].button("✕", key=f"rm_{i}"):
-                    to_remove = i
-            if to_remove is not None:
-                st.session_state.peers.pop(to_remove)
-                st.rerun()
+                to_remove = None
+                for i, p in enumerate(st.session_state.peers):
+                    row = st.columns([0.6, 2, 1.5, 1.5, 1, 0.7])
+                    p["include"] = row[0].checkbox("", value=p["include"], key=f"inc_{i}", label_visibility="collapsed")
+                    row[1].markdown(p["ticker"])
+                    bs_date = p.get("balance_sheet_date")
+                    de_help = f"Balance sheet date: {bs_date}" if bs_date else "Manually entered"
+                    p["debt_equity"] = row[2].number_input("", value=float(p["debt_equity"]), step=0.05,
+                                                             key=f"de_{i}", label_visibility="collapsed", help=de_help)
+                    tax_date = p.get("tax_statement_date")
+                    tax_help = f"Income statement date: {tax_date}" if tax_date else "Manually entered"
+                    p["tax_rate"] = row[3].number_input("", value=float(p["tax_rate"]), step=0.01,
+                                                         key=f"tax_{i}", label_visibility="collapsed", help=tax_help)
+                    src_label = "auto" if p["de_source"] == "auto-fetched" else "manual"
+                    row[4].caption(src_label)
+                    if row[5].button("✕", key=f"rm_{i}"):
+                        to_remove = i
+                if to_remove is not None:
+                    st.session_state.peers.pop(to_remove)
+                    st.rerun()
 
             if st.button("Recalculate Bottom-Up Beta", key="t3_calc"):
                 active_peers = [

@@ -645,6 +645,25 @@ def fetch_company_financials(ticker: str) -> CompanyFinancials:
         data.current_net_income = ni_clean[-1] if ni_clean else None
         data.current_fcfe = fcfe_clean[-1] if fcfe_clean else None
 
+        # Trailing P/E is supposed to mean trailing *twelve months*, not "the
+        # last completed fiscal year" - those can differ by close to a full
+        # year depending on how long ago the fiscal year ended. yfinance
+        # exposes a genuine TTM income statement (summing the last 4
+        # reported quarters) via ttm_income_stmt - use its Net Income figure
+        # here when available, since this is exactly what feeds the "Current
+        # trailing P/E" shown in the Exit P/E Multiple option. Falls back to
+        # the last annual figure above if TTM data isn't available for this
+        # ticker (some Indian tickers have sparser quarterly coverage).
+        try:
+            ttm_inc = stock.ttm_income_stmt
+            ttm_ni_row = _first_available_row(ttm_inc, ["Net Income Common Stockholders", "Net Income"])
+            if ttm_ni_row is not None and len(ttm_ni_row) > 0:
+                ttm_ni_val = _clean_num(ttm_ni_row.iloc[0])
+                if ttm_ni_val is not None:
+                    data.current_net_income = ttm_ni_val
+        except Exception as e:
+            data.warnings.append(f"Could not fetch TTM net income, using last fiscal year instead: {e}")
+
     except Exception as e:
         data.warnings.append(f"Could not build flow history from cash flow/income statement: {e}")
 

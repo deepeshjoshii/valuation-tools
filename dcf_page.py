@@ -55,7 +55,7 @@ LAKH_CR = 100_000  # 1 Lakh Crore, expressed in Cr units
 # ============================================================
 # PAGE CONFIG + THEME (identical palette to the Beta Calculator)
 # ============================================================
-from theme import THEMES, searchbox_style, render_disclaimer, PLOTLY_CONFIG, friendly_error, show_error_detail
+from theme import THEMES, searchbox_style, render_disclaimer, render_feedback_widget, PLOTLY_CONFIG, friendly_error, show_error_detail
 
 if "theme" not in st.session_state:
     st.session_state.theme = "dark"
@@ -467,19 +467,39 @@ if ticker:
                             "Tax rate for WACC (%)", value=tax_default, step=0.5, key="fcff_tax_pct",
                             help="Defaults to the latest statement's effective tax rate.",
                         )
+                        current_de = (total_debt / market_cap) if (market_cap and total_debt is not None and market_cap > 0) else 0.0
+                        target_de_wacc = st.number_input(
+                            "Target D/E (for WACC weights)", value=round(current_de, 2), step=0.05,
+                            min_value=0.0, key="fcff_target_de",
+                            help="Defaults to today's actual market D/E (Total Debt ÷ Market Cap). Override this if "
+                                 "you want WACC weighted to a target/normalized capital structure instead of "
+                                 "today's market snapshot — e.g. an industry-average D/E, or where you expect the "
+                                 "company's structure to settle. This only affects the WACC weights, not the "
+                                 "Enterprise Value bridge below, which always uses today's actual market cap and debt.",
+                        )
                         st.metric("Market cap (E)", fmt_cr(market_cap_cr))
                         st.metric("Total debt (D)", fmt_cr(total_debt_cr))
+                    # WACC weights come from the target D/E ratio, not directly from
+                    # market_cap/total_debt - anchored on market cap (E stays what it
+                    # actually is; D is the debt level implied by the target ratio).
+                    # When target_de_wacc equals today's actual D/E (the default), this
+                    # reduces to exactly the old behavior.
+                    wacc_equity = market_cap or 0.0
+                    wacc_debt = target_de_wacc * wacc_equity
+                    e_weight_disp = 1 / (1 + target_de_wacc) if (1 + target_de_wacc) > 0 else 0.0
+                    d_weight_disp = 1 - e_weight_disp
                     try:
                         discount_rate = compute_wacc(
                             ke=ke, kd=kd_pct / 100, tax_rate=tax_pct / 100,
-                            market_value_equity=market_cap or 0.0, market_value_debt=total_debt or 0.0,
+                            market_value_equity=wacc_equity, market_value_debt=wacc_debt,
                         )
                         st.metric("WACC (computed)", f"{discount_rate:.2%}", help=GLOSSARY["wacc"])
                         st.caption(
-                            f"= {market_cap_cr / (market_cap_cr + total_debt_cr):.0%} × {ke:.2%} (Ke)  +  "
-                            f"{total_debt_cr / (market_cap_cr + total_debt_cr):.0%} × {kd_pct/100:.2%} (Kd) × "
+                            f"= {e_weight_disp:.0%} × {ke:.2%} (Ke)  +  "
+                            f"{d_weight_disp:.0%} × {kd_pct/100:.2%} (Kd) × "
                             f"(1 − {tax_pct/100:.0%} tax)"
-                            if (market_cap_cr or 0) + (total_debt_cr or 0) > 0 else ""
+                            f"  ·  weights from a {target_de_wacc:.2f} D/E"
+                            if wacc_equity > 0 else ""
                         )
                     except ValueError as e:
                         st.error(str(e))
@@ -747,3 +767,4 @@ verification (recent bond yields, loan terms) before you rely on it.
 
 st.caption("[GitHub](https://github.com/deepeshjoshii) · Source and other tools for this project.")
 render_disclaimer(T)
+render_feedback_widget("Reverse DCF")

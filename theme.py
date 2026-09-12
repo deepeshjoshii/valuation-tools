@@ -128,26 +128,25 @@ div.stButton > button {{
 }}
 div.stButton > button:hover {{ opacity: 0.88; }}
 
-/* Landing-page tiles - the whole card is an <a> tag (see home.py), so the
-   hover lift applies to the link itself, not a div sitting inside it. */
-a.tool-tile {{
-    display: block;
+/* Landing-page tiles - now a st.container(key="tile_...", border=True) with
+   a real st.switch_page button inside, NOT a raw <a href> (see home.py). A
+   raw anchor tag causes an actual browser page load, which starts a brand
+   new Streamlit session and silently wipes st.session_state - that was the
+   root cause of calculated results vanishing when navigating home first.
+   Targets any container whose key starts with "tile_". */
+div[class*="st-key-tile_"] {{
     background-color: {T['surface1']};
-    border: 1px solid {T['border']};
+    border: 1px solid {T['border']} !important;
     border-radius: 14px;
-    padding: 24px;
-    height: 100%;
-    text-decoration: none;
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }}
-a.tool-tile:hover {{
+div[class*="st-key-tile_"]:hover {{
     transform: translateY(-4px);
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
-    border-color: {T['accent']};
+    border-color: {T['accent']} !important;
 }}
-a.tool-tile h3 {{ color: {T['text']}; margin-top: 0; }}
-a.tool-tile p {{ color: {T['text_muted']}; }}
-a.tool-tile .tile-cta {{ color: {T['accent']}; font-weight: 600; }}
+div[class*="st-key-tile_"] h3 {{ color: {T['text']}; margin-top: 0; }}
+div[class*="st-key-tile_"] p {{ color: {T['text_muted']}; }}
 /* Peer-set table (Bottom-Up Beta tab) - by default Streamlit stacks
    st.columns() vertically once the screen is too narrow for all of them
    side by side, which turns this into an unreadable list of labels on
@@ -280,3 +279,28 @@ def render_disclaimer(T: dict):
         f"{DISCLAIMER_TEXT}</div>",
         unsafe_allow_html=True,
     )
+
+FEEDBACK_EMAIL = "deepeshjosh2003@gmail.com"
+
+
+def render_feedback_widget(page_name: str):
+    """A lightweight feedback box - no backend, database, or third-party
+    account needed. It builds a mailto: link with the visitor's message
+    pre-filled, so clicking it just opens their own email app addressed to
+    FEEDBACK_EMAIL above; nothing is sent until they hit send there. Call
+    this once near the bottom of each page (home.py, beta_page.py,
+    dcf_page.py), passing a short name for that page so replies arrive with
+    useful context in the subject line."""
+    import urllib.parse
+
+    with st.expander("💬 Feedback or found a bug?"):
+        msg = st.text_area(
+            "Your message", key=f"feedback_msg_{page_name}", height=100,
+            placeholder="What worked, what didn't, or what you'd like to see...",
+        )
+        subject = urllib.parse.quote(f"Feedback — Valuation Tools ({page_name})")
+        body = urllib.parse.quote(msg) if msg else ""
+        mailto = f"mailto:{FEEDBACK_EMAIL}?subject={subject}&body={body}"
+        st.link_button("📧 Send this as an email", mailto, use_container_width=True,
+                        disabled=not msg)
+        st.caption("Opens your email app with this pre-filled — nothing is sent until you hit send there.")

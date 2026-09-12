@@ -44,7 +44,7 @@ def searchbox_fragment(search_fn, **kwargs):
 # st.navigation hands off to this page - both apply globally across pages,
 # so they're not repeated here. THEMES/searchbox_style now live in theme.py,
 # the single shared source both pages import from.
-from theme import THEMES, searchbox_style, render_disclaimer, PLOTLY_CONFIG, friendly_error, show_error_detail
+from theme import THEMES, searchbox_style, render_disclaimer, render_feedback_widget, PLOTLY_CONFIG, friendly_error, show_error_detail
 
 if "theme" not in st.session_state:
     st.session_state.theme = "dark"
@@ -186,22 +186,12 @@ def info_icon(key: str) -> str:
 st.title("Beta Calculator")
 st.caption("Historical & Bottom-Up Equity Beta Analysis")
 
-if "history" not in st.session_state:
-    st.session_state.history = []
 if "peers" not in st.session_state:
     st.session_state.peers = []
 if "single_result" not in st.session_state:
     st.session_state.single_result = None
 if "bottom_up_result" not in st.session_state:
     st.session_state.bottom_up_result = None
-
-
-def log_history(ticker, context):
-    st.session_state.history.insert(0, {
-        "ticker": ticker, "context": context,
-        "time": datetime.now().strftime("%H:%M:%S")
-    })
-    st.session_state.history = st.session_state.history[:15]
 
 
 @st.cache_data(ttl=900, show_spinner=False)
@@ -230,14 +220,6 @@ def searchbox_callback(searchterm: str):
     res = cached_search_company(searchterm)
     return [(f"{r['symbol']} — {r['name']} ({r['exchange']})", r["symbol"]) for r in res["results"]]
 
-
-with st.sidebar:
-    st.markdown("### Session History")
-    if not st.session_state.history:
-        st.caption("Tickers you calculate will show up here.")
-    for h in st.session_state.history:
-        st.markdown(f"**{h['ticker']}** · {h['context']}  \n<span style='color:{T['text_muted']}'>{h['time']}</span>",
-                     unsafe_allow_html=True)
 
 tab_beta, tab_bottomup, tab_coe = st.tabs(["Beta Analysis", "Bottom-Up Beta", "Cost of Equity"])
 
@@ -318,7 +300,6 @@ with tab_beta:
             st.session_state.single_result = result
             st.session_state.single_prices = (stock_prices, index_prices, interval1)
             period_label = f"{start_str} to {end_str}" if start_str else period1
-            log_history(ticker1, f"Single beta ({idx1_name}, {period_label}/{interval1_display})")
         except Exception as e:
             st.error(friendly_error(e, ticker1))
             show_error_detail(e)
@@ -498,7 +479,6 @@ with tab_beta:
                 )
             st.session_state.sensitivity_df = df_sens
             st.session_state.sensitivity_ticker = ticker1  # remember which ticker this table is for
-            log_history(ticker1, "Sensitivity table")
 
     if "sensitivity_df" in st.session_state:
         sens_ticker = st.session_state.get("sensitivity_ticker")
@@ -650,18 +630,24 @@ with tab_bottomup:
             add_clicked = st.button("Add Peer", use_container_width=True)
 
         if add_clicked and new_peer_picked:
-            with st.spinner(f"Fetching {new_peer_picked}..."):
-                fin = cached_fetch_financials(new_peer_picked)
-            st.session_state.peers.append({
-                "ticker": new_peer_picked.strip().upper(),
-                "debt_equity": fin["debt_equity"] if fin["debt_equity"] is not None else 0.30,
-                "de_source": fin["debt_equity_source"],
-                "tax_rate": fin["tax_rate"] if fin["tax_rate"] is not None else 0.25,
-                "tax_source": fin["tax_rate_source"],
-                "balance_sheet_date": fin["balance_sheet_date"],
-                "tax_statement_date": fin["tax_statement_date"],
-                "include": True,
-            })
+            new_ticker = new_peer_picked.strip().upper()
+            existing_tickers = {p["ticker"] for p in st.session_state.peers}
+            if new_ticker in existing_tickers:
+                st.warning(f"{new_ticker} is already in the peer set — adding it again would double-count "
+                           f"it in the mean/median, so it's been skipped.")
+            else:
+                with st.spinner(f"Fetching {new_peer_picked}..."):
+                    fin = cached_fetch_financials(new_peer_picked)
+                st.session_state.peers.append({
+                    "ticker": new_ticker,
+                    "debt_equity": fin["debt_equity"] if fin["debt_equity"] is not None else 0.30,
+                    "de_source": fin["debt_equity_source"],
+                    "tax_rate": fin["tax_rate"] if fin["tax_rate"] is not None else 0.25,
+                    "tax_source": fin["tax_rate_source"],
+                    "balance_sheet_date": fin["balance_sheet_date"],
+                    "tax_statement_date": fin["tax_statement_date"],
+                    "include": True,
+                })
 
         if st.session_state.peers:
             st.markdown("**Peer set**")
@@ -710,7 +696,6 @@ with tab_bottomup:
                             res = bottom_up_beta(active_peers, target_de, target_tax, index_key=bu_index,
                                                   period=bu_period, interval=bu_interval)
                             st.session_state.bottom_up_result = res
-                            log_history(", ".join(p["ticker"] for p in active_peers), "Bottom-up beta")
                         except Exception as e:
                             st.error(friendly_error(e, "one of the peers"))
                             show_error_detail(e)
@@ -799,3 +784,4 @@ with tab_coe:
 st.divider()
 st.caption("[GitHub](https://github.com/deepeshjoshii) · Source and other tools for this project.")
 render_disclaimer(T)
+render_feedback_widget("Beta Calculator")

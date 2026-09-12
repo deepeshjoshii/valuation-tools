@@ -44,7 +44,7 @@ def searchbox_fragment(search_fn, **kwargs):
 # st.navigation hands off to this page - both apply globally across pages,
 # so they're not repeated here. THEMES/searchbox_style now live in theme.py,
 # the single shared source both pages import from.
-from theme import THEMES, searchbox_style, render_disclaimer, PLOTLY_CONFIG
+from theme import THEMES, searchbox_style, render_disclaimer, PLOTLY_CONFIG, friendly_error, show_error_detail
 
 if "theme" not in st.session_state:
     st.session_state.theme = "dark"
@@ -312,7 +312,8 @@ with tab_beta:
             period_label = f"{start_str} to {end_str}" if start_str else period1
             log_history(ticker1, f"Single beta ({idx1_name}, {period_label}/{interval1_display})")
         except Exception as e:
-            st.error(f"Couldn't calculate beta: {e}")
+            st.error(friendly_error(e, ticker1))
+            show_error_detail(e)
             st.session_state.single_result = None
 
     result = st.session_state.single_result
@@ -703,7 +704,8 @@ with tab_bottomup:
                             st.session_state.bottom_up_result = res
                             log_history(", ".join(p["ticker"] for p in active_peers), "Bottom-up beta")
                         except Exception as e:
-                            st.error(f"Couldn't calculate: {e}")
+                            st.error(friendly_error(e, "one of the peers"))
+                            show_error_detail(e)
 
     if st.session_state.bottom_up_result:
         res = st.session_state.bottom_up_result

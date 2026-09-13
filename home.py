@@ -20,14 +20,13 @@ st.divider()
 
 col1, col2 = st.columns(2, gap="large")
 
-# Tiles are st.container(key=..., border=True) with a real st.switch_page
-# button inside - NOT a raw <a href> (see theme.py's CSS comment for why:
-# a plain anchor tag causes an actual browser page load, which starts a
-# brand new Streamlit session and silently wipes everything in
-# st.session_state - beta/Ke calculated in the Beta Calculator, peer sets,
-# etc. - the moment someone goes Home first and clicks a tile from there.
-# st.switch_page is Streamlit's own internal navigation and preserves
-# session state exactly like the top nav bar does.
+# Tiles are st.container(key=..., border=True) with a st.page_link stretched
+# across the whole card via CSS (see theme.py) so the entire tile is
+# clickable, not just a small link line. Using st.page_link specifically -
+# not a raw <a href> (a hard browser reload, wipes st.session_state) and not
+# st.switch_page either (Streamlit itself has open bug reports of
+# switch_page losing session_state in some cases - page_link is the one
+# confirmed reliable for this in Streamlit's own issue tracker).
 with col1:
     with st.container(key="tile_beta", border=True):
         st.markdown(
@@ -39,11 +38,11 @@ bottom-up beta from a peer set when the stock's own history is too short or nois
 to trust directly. Feeds straight into a CAPM cost of equity.</p>
 <p><b>Answers:</b> how sensitive is this stock to the market, and what discount
 rate does that imply?</p>
+<p class="tile-cta">Open Beta Calculator →</p>
 """,
             unsafe_allow_html=True,
         )
-        st.button("Open Beta Calculator →", key="go_beta", use_container_width=True,
-                  on_click=lambda: st.switch_page("beta_page.py"))
+        st.page_link("beta_page.py", label="Open Beta Calculator →")
 
 with col2:
     with st.container(key="tile_dcf", border=True):
@@ -56,11 +55,11 @@ free-cash-flow growth rate that would justify it - then compares that to the
 company's own historical FCF growth.</p>
 <p><b>Answers:</b> what growth is the market already pricing in, and how does
 that compare with the company's track record?</p>
+<p class="tile-cta">Open Reverse DCF →</p>
 """,
             unsafe_allow_html=True,
         )
-        st.button("Open Reverse DCF →", key="go_dcf", use_container_width=True,
-                  on_click=lambda: st.switch_page("dcf_page.py"))
+        st.page_link("dcf_page.py", label="Open Reverse DCF →")
 
 st.divider()
 

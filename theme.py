@@ -128,13 +128,15 @@ div.stButton > button {{
 }}
 div.stButton > button:hover {{ opacity: 0.88; }}
 
-/* Landing-page tiles - now a st.container(key="tile_...", border=True) with
-   a real st.switch_page button inside, NOT a raw <a href> (see home.py). A
-   raw anchor tag causes an actual browser page load, which starts a brand
-   new Streamlit session and silently wipes st.session_state - that was the
-   root cause of calculated results vanishing when navigating home first.
-   Targets any container whose key starts with "tile_". */
+/* Landing-page tiles - st.container(key="tile_...", border=True) with a
+   st.page_link inside, NOT a raw <a href> and NOT st.switch_page (see
+   home.py's comment for why - both wipe or can wipe st.session_state).
+   The page_link's own real anchor is stretched to cover the entire tile
+   and made invisible, so the whole card is clickable; what's actually
+   *seen* is the separate ".tile-cta" text below, styled to look like the
+   link. Targets any container whose key starts with "tile_". */
 div[class*="st-key-tile_"] {{
+    position: relative;
     background-color: {T['surface1']};
     border: 1px solid {T['border']} !important;
     border-radius: 14px;
@@ -147,6 +149,17 @@ div[class*="st-key-tile_"]:hover {{
 }}
 div[class*="st-key-tile_"] h3 {{ color: {T['text']}; margin-top: 0; }}
 div[class*="st-key-tile_"] p {{ color: {T['text_muted']}; }}
+div[class*="st-key-tile_"] .tile-cta {{ color: {T['accent']}; font-weight: 600; }}
+div[class*="st-key-tile_"] [data-testid="stPageLink"] {{
+    position: absolute; inset: 0; margin: 0; z-index: 2;
+}}
+div[class*="st-key-tile_"] [data-testid="stPageLink"] a {{
+    display: block; width: 100%; height: 100%;
+}}
+div[class*="st-key-tile_"] [data-testid="stPageLink"] a p,
+div[class*="st-key-tile_"] [data-testid="stPageLink"] a span {{
+    opacity: 0;
+}}
 /* Peer-set table (Bottom-Up Beta tab) - by default Streamlit stacks
    st.columns() vertically once the screen is too narrow for all of them
    side by side, which turns this into an unreadable list of labels on
@@ -167,6 +180,39 @@ div[class*="st-key-tile_"] p {{ color: {T['text_muted']}; }}
 .info-popover summary {{ list-style: none; }}
 .info-popover summary::-webkit-details-marker {{ display: none; }}
 .info-popover summary::marker {{ content: ""; }}
+
+/* Feedback widget (render_feedback_widget in this file) - a tab fixed to
+   the right edge of the screen, vertically centered, matching the floating
+   feedback buttons common on other sites. Targets any container whose key
+   starts with "feedback_toggle_"/"feedback_panel_" (one per page, so each
+   page's feedback state is independent). */
+div[class*="st-key-feedback_toggle_"] {{
+    position: fixed;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1000;
+}}
+div[class*="st-key-feedback_toggle_"] button {{
+    writing-mode: vertical-rl;
+    border-radius: 8px 0 0 8px !important;
+    padding: 14px 10px !important;
+    box-shadow: -3px 0 12px rgba(0, 0, 0, 0.25);
+}}
+div[class*="st-key-feedback_panel_"] {{
+    position: fixed;
+    right: 56px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 999;
+    width: 320px;
+    max-width: 80vw;
+    background-color: {T['surface1']};
+    border: 1px solid {T['border']};
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: -6px 0 24px rgba(0, 0, 0, 0.35);
+}}
 </style>
 """
 
@@ -282,25 +328,99 @@ def render_disclaimer(T: dict):
 
 FEEDBACK_EMAIL = "deepeshjosh2003@gmail.com"
 
+# Formspree endpoint (set up and confirmed) - feedback submissions POST here
+# and Formspree forwards them to FEEDBACK_EMAIL. If this ever needs to
+# change (new form, different account), just replace the URL below.
+FORMSPREE_ENDPOINT = "https://formspree.io/f/mqpkvegn"
+
+
+def submit_feedback(page_name: str, email: str, message: str, would_return: str) -> bool:
+    """POSTs the feedback to Formspree (a free form-backend service - no
+    server or database of your own needed). Returns True on success. Kept
+    separate from render_feedback_widget so the network call and its
+    failure handling are easy to follow on their own."""
+    import requests
+    try:
+        resp = requests.post(
+            FORMSPREE_ENDPOINT,
+            data={
+                "email": email or "(not provided)",
+                "page": page_name,
+                "would_use_again": would_return,
+                "message": message,
+            },
+            headers={"Accept": "application/json"},
+            timeout=8,
+        )
+        return resp.status_code in (200, 201)
+    except Exception:
+        return False
+
 
 def render_feedback_widget(page_name: str):
-    """A lightweight feedback box - no backend, database, or third-party
-    account needed. It builds a mailto: link with the visitor's message
-    pre-filled, so clicking it just opens their own email app addressed to
-    FEEDBACK_EMAIL above; nothing is sent until they hit send there. Call
-    this once near the bottom of each page (home.py, beta_page.py,
-    dcf_page.py), passing a short name for that page so replies arrive with
-    useful context in the subject line."""
+    """A feedback tab fixed to the right edge of the screen (the CSS in
+    get_custom_css targets keys starting with "feedback_toggle_"/
+    "feedback_panel_"), matching the floating feedback buttons common on
+    other sites. Deliberately asks a couple of specific, easy-to-answer
+    questions (which page, would they use it again) alongside the open
+    message box, rather than just "any feedback?" - specific questions get
+    answered; an open blank box mostly doesn't. Submitting POSTs it to
+    Formspree, which forwards it to your inbox without exposing your email
+    address anywhere in the page's code (unlike a mailto: link) and without
+    you running any backend of your own.
+
+    ONE-TIME SETUP (not yet done - submissions won't go anywhere until you
+    do this):
+      1. Go to formspree.io, sign up free, create a new form.
+      2. Formspree gives you an endpoint URL like
+         https://formspree.io/f/abcdwxyz - copy it.
+      3. Paste it in as FORMSPREE_ENDPOINT above, replacing the placeholder.
+      4. Formspree will ask you to confirm your email the first time a
+         submission comes in - just click the confirmation link it sends.
+    Free tier covers 50 submissions/month, plenty for a site like this.
+
+    Call this once near the bottom of each page (home.py, beta_page.py,
+    dcf_page.py), passing a short name for that page so submissions arrive
+    with useful context."""
     import urllib.parse
 
-    with st.expander("💬 Feedback or found a bug?"):
-        msg = st.text_area(
-            "Your message", key=f"feedback_msg_{page_name}", height=100,
-            placeholder="What worked, what didn't, or what you'd like to see...",
-        )
-        subject = urllib.parse.quote(f"Feedback — Valuation Tools ({page_name})")
-        body = urllib.parse.quote(msg) if msg else ""
-        mailto = f"mailto:{FEEDBACK_EMAIL}?subject={subject}&body={body}"
-        st.link_button("📧 Send this as an email", mailto, use_container_width=True,
-                        disabled=not msg)
-        st.caption("Opens your email app with this pre-filled — nothing is sent until you hit send there.")
+    open_key = f"feedback_open_{page_name}"
+    if open_key not in st.session_state:
+        st.session_state[open_key] = False
+
+    label = "✕ Close" if st.session_state[open_key] else "💬 Feedback"
+    with st.container(key=f"feedback_toggle_{page_name}"):
+        if st.button(label, key=f"feedback_toggle_btn_{page_name}"):
+            st.session_state[open_key] = not st.session_state[open_key]
+
+    if st.session_state[open_key]:
+        with st.container(key=f"feedback_panel_{page_name}"):
+            st.markdown("**Help improve the tools**")
+            st.caption(f"Feedback on: {page_name}")
+            would_return = st.radio("Would you use this again?", ["Yes", "Maybe", "No"],
+                                     key=f"feedback_return_{page_name}", horizontal=True)
+            msg = st.text_area(
+                "Found something confusing, incorrect, or missing?",
+                key=f"feedback_msg_{page_name}", height=110,
+                placeholder="What worked, what didn't, or what you'd like to see...",
+            )
+            email = st.text_input("Your email (optional — only if you'd like a reply)",
+                                   key=f"feedback_email_{page_name}")
+            if st.button("Submit", key=f"feedback_submit_{page_name}", use_container_width=True):
+                if not msg.strip():
+                    st.warning("Please write a message before submitting.")
+                elif FORMSPREE_ENDPOINT.endswith("REPLACE_ME"):
+                    # Setup not done yet - fall back to mailto rather than
+                    # silently losing the visitor's feedback.
+                    subject = urllib.parse.quote(f"Feedback — Valuation Tools ({page_name})")
+                    body = urllib.parse.quote(
+                        f"From: {email or '(not provided)'}\nWould use again: {would_return}\n\n{msg}"
+                    )
+                    st.warning("Feedback backend isn't set up yet — here's a direct email link instead:")
+                    st.link_button("📧 Send as email", f"mailto:{FEEDBACK_EMAIL}?subject={subject}&body={body}",
+                                    use_container_width=True)
+                elif submit_feedback(page_name, email, msg, would_return):
+                    st.success("Thanks — feedback sent!")
+                    st.session_state[open_key] = False
+                else:
+                    st.error("Couldn't send that just now — please try again in a moment.")

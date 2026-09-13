@@ -20,13 +20,13 @@ st.divider()
 
 col1, col2 = st.columns(2, gap="large")
 
-# Tiles are st.container(key=..., border=True) with a st.page_link stretched
-# across the whole card via CSS (see theme.py) so the entire tile is
-# clickable, not just a small link line. Using st.page_link specifically -
-# not a raw <a href> (a hard browser reload, wipes st.session_state) and not
-# st.switch_page either (Streamlit itself has open bug reports of
-# switch_page losing session_state in some cases - page_link is the one
-# confirmed reliable for this in Streamlit's own issue tracker).
+# Tiles are st.container(key=..., border=True) with a real st.page_link
+# styled as a button (see theme.py) - clicking that button is what
+# navigates. Using st.page_link specifically, not a raw <a href> (a hard
+# browser reload, wipes st.session_state) and not st.switch_page either
+# (Streamlit itself has open bug reports of switch_page losing
+# session_state in some cases - page_link is the one confirmed reliable
+# for this in Streamlit's own issue tracker).
 with col1:
     with st.container(key="tile_beta", border=True):
         st.markdown(
@@ -38,7 +38,6 @@ bottom-up beta from a peer set when the stock's own history is too short or nois
 to trust directly. Feeds straight into a CAPM cost of equity.</p>
 <p><b>Answers:</b> how sensitive is this stock to the market, and what discount
 rate does that imply?</p>
-<p class="tile-cta">Open Beta Calculator →</p>
 """,
             unsafe_allow_html=True,
         )
@@ -55,7 +54,6 @@ free-cash-flow growth rate that would justify it - then compares that to the
 company's own historical FCF growth.</p>
 <p><b>Answers:</b> what growth is the market already pricing in, and how does
 that compare with the company's track record?</p>
-<p class="tile-cta">Open Reverse DCF →</p>
 """,
             unsafe_allow_html=True,
         )

@@ -131,12 +131,15 @@ div.stButton > button:hover {{ opacity: 0.88; }}
 /* Landing-page tiles - st.container(key="tile_...", border=True) with a
    st.page_link inside, NOT a raw <a href> and NOT st.switch_page (see
    home.py's comment for why - both wipe or can wipe st.session_state).
-   The page_link's own real anchor is stretched to cover the entire tile
-   and made invisible, so the whole card is clickable; what's actually
-   *seen* is the separate ".tile-cta" text below, styled to look like the
-   link. Targets any container whose key starts with "tile_". */
+   Earlier version of this tried to stretch the page_link invisibly over
+   the whole card via a guessed data-testid selector - that guess was
+   wrong (no way to verify it against a real rendered DOM from this
+   environment), which is exactly why the card looked hoverable but
+   wasn't clickable. Simpler and guaranteed to work: style the page_link
+   itself as a real, visible, full-width button - only that line is
+   clickable rather than the whole card, but it will actually work.
+   Targets any container whose key starts with "tile_". */
 div[class*="st-key-tile_"] {{
-    position: relative;
     background-color: {T['surface1']};
     border: 1px solid {T['border']} !important;
     border-radius: 14px;
@@ -149,16 +152,25 @@ div[class*="st-key-tile_"]:hover {{
 }}
 div[class*="st-key-tile_"] h3 {{ color: {T['text']}; margin-top: 0; }}
 div[class*="st-key-tile_"] p {{ color: {T['text_muted']}; }}
-div[class*="st-key-tile_"] .tile-cta {{ color: {T['accent']}; font-weight: 600; }}
 div[class*="st-key-tile_"] [data-testid="stPageLink"] {{
-    position: absolute; inset: 0; margin: 0; z-index: 2;
+    margin-top: 12px;
 }}
 div[class*="st-key-tile_"] [data-testid="stPageLink"] a {{
-    display: block; width: 100%; height: 100%;
+    display: block;
+    width: 100%;
+    text-align: center;
+    background-color: {T['accent']};
+    color: {T['accent_text']} !important;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 8px;
+    text-decoration: none !important;
 }}
-div[class*="st-key-tile_"] [data-testid="stPageLink"] a p,
+div[class*="st-key-tile_"] [data-testid="stPageLink"] a:hover {{
+    opacity: 0.88;
+}}
 div[class*="st-key-tile_"] [data-testid="stPageLink"] a span {{
-    opacity: 0;
+    color: {T['accent_text']} !important;
 }}
 /* Peer-set table (Bottom-Up Beta tab) - by default Streamlit stacks
    st.columns() vertically once the screen is too narrow for all of them
@@ -388,14 +400,20 @@ def render_feedback_widget(page_name: str):
     if open_key not in st.session_state:
         st.session_state[open_key] = False
 
-    label = "✕ Close" if st.session_state[open_key] else "💬 Feedback"
-    with st.container(key=f"feedback_toggle_{page_name}"):
-        if st.button(label, key=f"feedback_toggle_btn_{page_name}"):
-            st.session_state[open_key] = not st.session_state[open_key]
+    if not st.session_state[open_key]:
+        with st.container(key=f"feedback_toggle_{page_name}"):
+            if st.button("💬 Feedback", key=f"feedback_toggle_btn_{page_name}"):
+                st.session_state[open_key] = True
 
     if st.session_state[open_key]:
         with st.container(key=f"feedback_panel_{page_name}"):
-            st.markdown("**Help improve the tools**")
+            head_col, close_col = st.columns([5, 1])
+            with head_col:
+                st.markdown("**Help improve the tools**")
+            with close_col:
+                if st.button("✕", key=f"feedback_close_{page_name}", help="Close"):
+                    st.session_state[open_key] = False
+                    st.rerun()
             st.caption(f"Feedback on: {page_name}")
             would_return = st.radio("Would you use this again?", ["Yes", "Maybe", "No"],
                                      key=f"feedback_return_{page_name}", horizontal=True)

@@ -129,17 +129,18 @@ div.stButton > button {{
 div.stButton > button:hover {{ opacity: 0.88; }}
 
 /* Landing-page tiles - st.container(key="tile_...", border=True) with a
-   st.page_link inside, NOT a raw <a href> and NOT st.switch_page (see
-   home.py's comment for why - both wipe or can wipe st.session_state).
-   Earlier version of this tried to stretch the page_link invisibly over
-   the whole card via a guessed data-testid selector - that guess was
-   wrong (no way to verify it against a real rendered DOM from this
-   environment), which is exactly why the card looked hoverable but
-   wasn't clickable. Simpler and guaranteed to work: style the page_link
-   itself as a real, visible, full-width button - only that line is
-   clickable rather than the whole card, but it will actually work.
+   st.page_link stretched invisibly over the entire tile, NOT a raw <a href>
+   and NOT st.switch_page (see home.py's comment for why - both wipe or can
+   wipe st.session_state). The two previous attempts at this guessed the
+   CSS selector for page_link's internal DOM and guessed wrong both times -
+   this version was verified against Streamlit's actual compiled frontend
+   source (installed locally and grepped for the real data-testid strings):
+   the outer wrapper is [data-testid="stPageLink"] and the real clickable
+   element is [data-testid="stPageLink-NavLink"] - not a bare "a" selector,
+   which is why the earlier attempts silently matched nothing.
    Targets any container whose key starts with "tile_". */
 div[class*="st-key-tile_"] {{
+    position: relative;
     background-color: {T['surface1']};
     border: 1px solid {T['border']} !important;
     border-radius: 14px;
@@ -152,27 +153,23 @@ div[class*="st-key-tile_"]:hover {{
 }}
 div[class*="st-key-tile_"] h3 {{ color: {T['text']}; margin-top: 0; }}
 div[class*="st-key-tile_"] p {{ color: {T['text_muted']}; }}
+div[class*="st-key-tile_"] .tile-cta {{ color: {T['accent']}; font-weight: 600; }}
 div[class*="st-key-tile_"] [data-testid="stPageLink"] {{
-    margin-top: 12px;
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    z-index: 2;
 }}
-div[class*="st-key-tile_"] [data-testid="stPageLink"] a {{
+div[class*="st-key-tile_"] [data-testid="stPageLink-NavLink"] {{
     display: block;
     width: 100%;
-    text-align: center;
-    background-color: {T['accent']};
-    color: {T['accent_text']} !important;
-    font-weight: 600;
-    padding: 8px 16px;
-    border-radius: 8px;
-    text-decoration: none !important;
+    height: 100%;
 }}
-div[class*="st-key-tile_"] [data-testid="stPageLink"] a:hover {{
-    opacity: 0.88;
-}}
-div[class*="st-key-tile_"] [data-testid="stPageLink"] a span {{
-    color: {T['accent_text']} !important;
+div[class*="st-key-tile_"] [data-testid="stPageLink-NavLink"] * {{
+    opacity: 0;
 }}
 /* Peer-set table (Bottom-Up Beta tab) - by default Streamlit stacks
+
    st.columns() vertically once the screen is too narrow for all of them
    side by side, which turns this into an unreadable list of labels on
    mobile. Instead, force the row to stay horizontal and let the container
@@ -318,8 +315,8 @@ recommendation to buy or sell securities</strong> and should not be relied on as
 basis for any investment decision.</p>
 <p>Calculations depend on third-party data (Yahoo Finance via <code>yfinance</code>) that
 can be incomplete, delayed, mislabeled, or wrong for a given company or period - always
-cross-check key figures against a primary source (the company's filings, or a data
-provider like Screener) before relying on them. All models involve simplifying
+cross-check key figures against a primary source (the company's filings, or another
+financial data provider you trust) before relying on them. All models involve simplifying
 assumptions (see each tool's methodology notes); a different, reasonable set of
 assumptions can produce a materially different result. Use at your own judgment and
 risk.</p>

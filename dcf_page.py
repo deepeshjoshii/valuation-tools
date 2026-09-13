@@ -194,28 +194,58 @@ def ke_input_with_bridge(key_prefix: str, default: float = 13.0) -> float:
     return ke_pct / 100
 
 
-def render_transposed_history_editor(detail: list, row_label: str, editor_key: str):
+def render_transposed_history_editor(detail: list, row_label: str, editor_key: str, ttm_value: float = None):
     """
     Years-as-columns, one editable value row - e.g.:
-                    FY2023   FY2024   FY2025   FY2026
-    Net Income (Rs Cr)  120      145      160      210
-    Returns (edited_raw_values_oldest_to_newest, last_period_label_with_a_value).
+                    FY2023   FY2024   FY2025   FY2026   TTM
+    Net Income (Rs Cr)  120      145      160      210   225
+    Returns (edited_raw_values_oldest_to_newest, last_period_label_with_a_value,
+    edited_ttm_value_or_None, period_labels_aligned_with_the_values).
+
+    ttm_value, when given, appends a trailing "TTM" column after the last
+    fiscal year - it's a genuinely different figure from FY2026 (trailing
+    twelve months as of today vs. the last completed fiscal year), so
+    showing it separately avoids the confusion of a "current" figure used
+    elsewhere on the page that doesn't match anything visible in this
+    table. Only Net Income currently has a real TTM source (see
+    reverse_dcf.py's ttm_income_stmt fetch) - FCFF/FCFE don't get this
+    column since their "current" figure is still just the last fiscal year.
     """
     if not detail:
         st.info("No historical data could be built automatically for this period range.")
-        return [], None
+        return [], None, None, []
 
     periods = [r["period"] for r in detail]
     values_cr = [round(to_cr(r["value"]), 1) if r["value"] is not None else None for r in detail]
+    col_config = {p: st.column_config.NumberColumn(p, help="Editable - override if this looks wrong.")
+                  for p in periods}
+
+    if ttm_value is not None:
+        periods = periods + ["TTM"]
+        values_cr = values_cr + [round(to_cr(ttm_value), 1)]
+        col_config["TTM"] = st.column_config.NumberColumn(
+            "TTM", help="Trailing twelve months as of today - not the same as the last fiscal year "
+                        "column, which ends whenever that FY closed. Editable if you want to override it."
+        )
+
     df = pd.DataFrame([values_cr], columns=periods, index=[row_label])
 
     edited = st.data_editor(
         df, key=editor_key, use_container_width=True,
-        column_config={p: st.column_config.NumberColumn(p, help="Editable - override if this looks wrong.")
-                       for p in periods},
+        column_config=col_config,
     )
     edited_cr = edited.iloc[0].tolist()
     edited_raw = [from_cr(float(v)) if v is not None and not pd.isna(v) else None for v in edited_cr]
+
+    # TTM (if present) is always the last column - split it back off before
+    # anything downstream treats it as one more annual period. It's not
+    # part of the fiscal-year sequence CAGR/projections run on; it's a
+    # separately-tracked "as of today" figure.
+    edited_ttm = None
+    if ttm_value is not None:
+        edited_ttm = edited_raw[-1]
+        edited_raw = edited_raw[:-1]
+        periods = periods[:-1]
 
     skip_notes = [f"{r['period']}: {r['skip_reason']}" for r in detail if r.get("skip_reason")]
     if skip_notes:
@@ -225,7 +255,7 @@ def render_transposed_history_editor(detail: list, row_label: str, editor_key: s
 
     last_valid_idx = next((i for i in range(len(edited_raw) - 1, -1, -1) if edited_raw[i] is not None), None)
     last_period = periods[last_valid_idx] if last_valid_idx is not None else None
-    return edited_raw, last_period
+    return edited_raw, last_period, edited_ttm, periods
 
 
 def render_flow_chart(edited_series: list, last_period_label, trajectory, terminal_growth, projection_years, title: str, show_terminal_extension: bool = True):
@@ -392,14 +422,16 @@ if ticker:
         TERMINAL_GROWTH_DEFAULT = 4.0
         methodologies = [
             {
-                "key": "ni", "label": "Net Income", "row_label": "Net Income (Rs Cr)",
+                "key": "ni", "label": "⭐ Net Income", "row_label": "Net Income (Rs Cr)",
                 "detail": data.historical_net_income, "current": data.current_net_income,
                 "target_basis": "market_cap",
                 "caution": (
-                    "Net income is the most reliably-scraped figure of the three, but it includes "
-                    "one-off/exceptional items that aren't stripped out here (asset sales, write-offs, "
-                    "tax credits, etc.). Sanity-check the current figure against the company's own "
-                    "reported normalized/adjusted profit before relying on it."
+                    "Recommended starting point: net income is the most reliably-scraped figure of "
+                    "the three for Indian companies, since FCFF/FCFE depend on cash-flow line items "
+                    "that are frequently missing or mismapped. It does include one-off/exceptional "
+                    "items that aren't stripped out here (asset sales, write-offs, tax credits, etc.) "
+                    "— sanity-check the current figure against the company's own reported "
+                    "normalized/adjusted profit before relying on it."
                 ),
             },
             {
@@ -407,10 +439,11 @@ if ticker:
                 "detail": data.historical_fcff, "current": data.current_fcff,
                 "target_basis": "ev",
                 "caution": (
-                    "FCFF is built from CFO, interest expense and CapEx as separately reported by "
-                    "Yahoo Finance — these line items are frequently mismapped or missing for Indian "
-                    "tickers, so treat the auto-built figure as a starting point to verify, not a "
-                    "ground-truth number. Override any year that looks wrong."
+                    "FCFF is built from CFO, interest expense and CapEx as separately reported in the "
+                    "underlying financial statements — these line items are frequently mismapped or "
+                    "missing for Indian tickers, so treat the auto-built figure as a starting point to "
+                    "verify, not a ground-truth number. Override any year that looks wrong, or use the "
+                    "Net Income tab instead if this data looks too sparse to trust."
                 ),
             },
             {
@@ -420,7 +453,8 @@ if ticker:
                 "caution": (
                     "FCFE shares FCFF's CFO/CapEx data-quality caveats (see the FCFF tab) but adds "
                     "net borrowing instead of an interest add-back — check that figure too if a year "
-                    "looks off, and override manually where needed."
+                    "looks off, and override manually where needed. The Net Income tab is generally "
+                    "the more reliable starting point if this data looks sparse."
                 ),
             },
         ]
@@ -433,16 +467,19 @@ if ticker:
                 st.caption(cfg["caution"])
 
                 st.markdown(f"**{cfg['label']} history (auto-built — edit any year that looks wrong)**")
-                edited_series, last_period = render_transposed_history_editor(
+                is_ni = key == "ni"
+                edited_series, last_period, edited_ttm, edited_periods = render_transposed_history_editor(
                     cfg["detail"], cfg["row_label"], editor_key=f"{key}_history_editor",
+                    ttm_value=cfg["current"] if is_ni else None,
                 )
 
-                auto_current = cfg["current"] or 0.0
+                auto_current = (edited_ttm if is_ni and edited_ttm is not None else cfg["current"]) or 0.0
                 current_cr = st.number_input(
                     f"Current {cfg['label']} used for the DCF (Rs Cr)",
                     value=round(to_cr(auto_current) or 0.0, 1), step=1.0,
                     key=f"{key}_current_input",
-                    help="Defaults to the latest column of the table above — override here if needed.",
+                    help=("Defaults to the TTM column above — override here if needed." if is_ni else
+                          "Defaults to the latest column of the table above — override here if needed."),
                 )
                 current_flow = from_cr(current_cr)
                 st.caption(f"≈ {fmt_cr(current_cr, 1)}")
@@ -600,7 +637,9 @@ if ticker:
                             m1, m2 = st.columns(2)
                             m1.metric("Required CAGR", f"{implied_cagr:.1%}", help=GLOSSARY["implied_cagr"])
 
-                            cagr_3y, reason_3y, msg_3y = trailing_cagr_with_reason(edited_series, years=3)
+                            cagr_3y, reason_3y, msg_3y = trailing_cagr_with_reason(
+                                edited_series, years=3, periods=edited_periods
+                            )
                             with m2:
                                 if reason_3y == "ok":
                                     st.metric("Historical 3-Yr CAGR", f"{cagr_3y:.1%}", help=GLOSSARY["historical_cagr"])
@@ -753,7 +792,7 @@ would double-count the effect of leverage.
   identified net-borrowing figure.
 
 In all three tabs, every historical year is editable — override any figure that
-looks wrong against the company's own filings or a source like Screener.
+looks wrong against the company's own filings or another financial data source you trust.
 
 **History window:** capped to the most recent 4 fiscal years (yfinance's free annual
 statements rarely go back further), giving a 3-year trailing CAGR as the longest

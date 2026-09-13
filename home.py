@@ -20,13 +20,13 @@ st.divider()
 
 col1, col2 = st.columns(2, gap="large")
 
-# Tiles are st.container(key=..., border=True) with a real st.page_link
-# styled as a button (see theme.py) - clicking that button is what
-# navigates. Using st.page_link specifically, not a raw <a href> (a hard
-# browser reload, wipes st.session_state) and not st.switch_page either
-# (Streamlit itself has open bug reports of switch_page losing
-# session_state in some cases - page_link is the one confirmed reliable
-# for this in Streamlit's own issue tracker).
+# Tiles are st.container(key=..., border=True) with a st.page_link stretched
+# invisibly across the whole card via CSS (verified selectors this time -
+# see theme.py's comment) so the entire tile is clickable, not just a link
+# line. Using st.page_link specifically, not a raw <a href> (a hard browser
+# reload, wipes st.session_state) and not st.switch_page either (Streamlit
+# itself has open bug reports of switch_page losing session_state in some
+# cases - page_link is the one confirmed reliable for this).
 with col1:
     with st.container(key="tile_beta", border=True):
         st.markdown(
@@ -38,6 +38,7 @@ bottom-up beta from a peer set when the stock's own history is too short or nois
 to trust directly. Feeds straight into a CAPM cost of equity.</p>
 <p><b>Answers:</b> how sensitive is this stock to the market, and what discount
 rate does that imply?</p>
+<p class="tile-cta">Open Beta Calculator →</p>
 """,
             unsafe_allow_html=True,
         )
@@ -48,12 +49,13 @@ with col2:
         st.markdown(
             """
 <h3>📉 Reverse DCF</h3>
-<p>Runs a WACC/FCFF enterprise-value DCF backwards: instead of assuming a growth
-rate to estimate a price, it takes today's actual market price and solves for the
-free-cash-flow growth rate that would justify it - then compares that to the
-company's own historical FCF growth.</p>
+<p>Runs a DCF backwards across three methodologies — Net Income, FCFF, or FCFE —
+solving for the growth rate that today's market price already implies, then compares
+it to the company's own historical growth. Net Income is generally the most reliable
+starting point for Indian companies given how patchy free-cash-flow disclosure often is.</p>
 <p><b>Answers:</b> what growth is the market already pricing in, and how does
 that compare with the company's track record?</p>
+<p class="tile-cta">Open Reverse DCF →</p>
 """,
             unsafe_allow_html=True,
         )
@@ -63,17 +65,25 @@ st.divider()
 
 st.subheader("About")
 st.markdown(
-    "I'm Deepesh — a finance professional working in equity analysis, based in Indore. "
-    "I'm pursuing an MA in Economics alongside the CFA Program, and I built these tools "
-    "to make my own valuation and research process faster and more consistent, rather "
-    "than rebuilding the same spreadsheet logic every time. I'm sharing them here in "
-    "case they're useful to others doing similar work."
+    "Good equity research often comes down to asking better questions — not just "
+    "building bigger spreadsheets.\n\n"
+    "I built these tools to make a few parts of my own research workflow faster, more "
+    "transparent, and easier to revisit. The idea is simple: take concepts that normally "
+    "live in scattered spreadsheets and turn them into small, focused tools that show the "
+    "assumptions behind the answer.\n\n"
+    "The **Beta Calculator** explores how a stock has behaved relative to the market, and "
+    "how that feeds into its cost of equity.\n\n"
+    "The **Reverse DCF** works backwards from today's valuation to ask a different "
+    "question: what does the current price actually imply about the company's future?\n\n"
+    "This is an evolving personal project. I'm building it primarily for my own workflow, "
+    "but I'm sharing it publicly because I think these tools — and the thinking behind "
+    "them — can be useful to other people interested in equity research and valuation.\n\n"
+    "**Deepesh Joshi**"
 )
 st.markdown(
-    "[LinkedIn](https://linkedin.com/in/deepeshjoshii) · "
-    "[GitHub](https://github.com/deepeshjoshii)"
-    # No email included - add one here (e.g. " · [Email](mailto:you@example.com)")
-    # if you want to list one; I don't have one on file to add for you.
+    "🔗 [GitHub](https://github.com/deepeshjoshii)  ·  "
+    "💼 [LinkedIn](https://linkedin.com/in/deepeshjoshii)  ·  "
+    "✉️ [Email](mailto:deepeshjosh2003@gmail.com)"
 )
 
 st.divider()

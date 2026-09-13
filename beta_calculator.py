@@ -414,6 +414,15 @@ def calculate_stock_beta(ticker: str, index_key: str = "Nifty 50",
     # calculation, the observations used, or the frequency selected.
     result["market_audit"] = detect_cross_market(ticker, index_key)
 
+    # Raw price series are already fetched above for the regression itself -
+    # exposing them here lets callers (e.g. the charts in beta_page.py) reuse
+    # this exact data instead of fetching the same ticker/period/interval a
+    # second time. Previously beta_page.py called a separate cached_prices()
+    # for chart data right after this function ran, downloading the same two
+    # series twice on every fresh (uncached) calculation.
+    result["stock_prices"] = stock_prices
+    result["index_prices"] = index_prices
+
     return result
 
 

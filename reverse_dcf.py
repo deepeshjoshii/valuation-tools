@@ -239,13 +239,52 @@ def flow_trajectory(current_flow: float, growth_rate: float, projection_years: i
     ]
 
 
-def historical_cagr(flow_series: list) -> Optional[float]:
+def _years_from_labels(first_label: str, last_label: str) -> Optional[int]:
+    """Best-effort elapsed-year count from two fiscal-year-style labels (e.g.
+    "FY2022" -> "FY2025" -> 3). Returns None if either label has no
+    extractable 4-digit year, so callers can fall back to position-counting
+    rather than fail outright."""
+    def year_of(label):
+        digits = "".join(ch for ch in str(label) if ch.isdigit())
+        return int(digits[-4:]) if len(digits) >= 4 else None
+    y1, y2 = year_of(first_label), year_of(last_label)
+    if y1 is None or y2 is None:
+        return None
+    return y2 - y1
+
+
+def historical_cagr(flow_series: list, periods: list = None) -> Optional[float]:
     """
     Geometric CAGR from the oldest to the newest value in a chronologically
     ordered list of historical flow figures (oldest first).
     Returns None if fewer than 2 usable points, or if the starting value
     isn't positive (CAGR is undefined/meaningless from a non-positive base).
+
+    periods, when given, must be a list of fiscal-year-style labels (e.g.
+    "FY2022") parallel to flow_series - elapsed time is then derived from
+    the actual labels of the first and last usable values, not from how
+    many usable values happen to remain. This matters when a *middle* year
+    is missing: e.g. FY2022, (missing), FY2024, FY2025 has 2 elapsed
+    intervals between usable points by position, but 3 elapsed years by
+    calendar - position-counting silently overstates the CAGR in cases like
+    this. Falls back to position-counting when periods isn't given (keeps
+    old behavior for any caller that doesn't have labels handy) or when the
+    labels can't be parsed into years.
     """
+    if periods is not None and len(periods) == len(flow_series):
+        pairs = [(p, v) for p, v in zip(periods, flow_series)
+                 if v is not None and not (isinstance(v, float) and math.isnan(v))]
+        if len(pairs) < 2:
+            return None
+        first_label, start = pairs[0]
+        last_label, end = pairs[-1]
+        if start <= 0:
+            return None
+        n = _years_from_labels(first_label, last_label)
+        if n is not None and n > 0:
+            return (end / start) ** (1 / n) - 1
+        # Labels present but unparseable - fall through to position-counting.
+
     clean = [v for v in flow_series if v is not None and not (isinstance(v, float) and math.isnan(v))]
     if len(clean) < 2:
         return None
@@ -256,7 +295,7 @@ def historical_cagr(flow_series: list) -> Optional[float]:
     return (end / start) ** (1 / n) - 1
 
 
-def historical_cagr_with_reason(flow_series: list):
+def historical_cagr_with_reason(flow_series: list, periods: list = None):
     """
     Same underlying result as historical_cagr() - this wrapper additionally
     classifies *why* the result is None, so the UI can show something more
@@ -268,6 +307,9 @@ def historical_cagr_with_reason(flow_series: list):
         "insufficient_data"  -> fewer than 2 periods were provided at all
         "non_positive_start" -> enough clean data, but the earliest usable
                                  flow is <= 0, so CAGR isn't meaningful
+
+    periods is passed straight through to historical_cagr() - see its
+    docstring for how it fixes elapsed-year counting around gap years.
 
     Returns (cagr_or_None, reason_code, human_readable_message_or_None).
     """
@@ -290,10 +332,10 @@ def historical_cagr_with_reason(flow_series: list):
             "conventional CAGR from that base isn't meaningful."
         )
 
-    return historical_cagr(flow_series), "ok", None
+    return historical_cagr(flow_series, periods), "ok", None
 
 
-def trailing_cagr_with_reason(flow_series: list, years: int):
+def trailing_cagr_with_reason(flow_series: list, years: int, periods: list = None):
     """
     CAGR (with reason code) computed over a trailing window of exactly
     `years` periods - i.e. using the last (years + 1) chronologically
@@ -305,6 +347,11 @@ def trailing_cagr_with_reason(flow_series: list, years: int):
     (years + 1) entries exist, it reports "insufficient_data" naming the
     shortfall, rather than silently computing a shorter-window CAGR and
     mislabeling it as N years.
+
+    periods, when given, must be parallel to flow_series (same length) -
+    the matching trailing slice is taken automatically and passed through
+    to historical_cagr_with_reason() for correct elapsed-year counting
+    around any gap year inside the window.
     """
     window = flow_series[-(years + 1):] if flow_series else []
     if len(window) < years + 1:
@@ -312,7 +359,8 @@ def trailing_cagr_with_reason(flow_series: list, years: int):
             f"Only {len(window)} period(s) available - {years + 1} are needed "
             f"for a {years}-year CAGR."
         )
-    return historical_cagr_with_reason(window)
+    periods_window = periods[-(years + 1):] if periods is not None and len(periods) == len(flow_series) else None
+    return historical_cagr_with_reason(window, periods_window)
 
 
 # ---------------------------------------------------------------------------

@@ -275,11 +275,11 @@ with tab_beta:
                 st.warning("'From' date must be before 'To' date.")
 
         st.caption(
-            "Unlike Yahoo Finance and most aggregators, which benchmark every stock against the "
-            "S&P 500 regardless of its home market, this uses whichever index you select above. "
-            "For an INR-based cost-of-equity analysis, a broad Indian index (Nifty 50, Nifty 500) "
-            "is often a reasonable choice — but benchmark selection should reflect the investment "
-            "universe and purpose of the analysis, not a single universally 'correct' answer."
+            "Many data providers benchmark every stock against the S&P 500 regardless of its home "
+            "market — this instead uses whichever index you select above. For an INR-based "
+            "cost-of-equity analysis, a broad Indian index (Nifty 50, Nifty 500) is often a "
+            "reasonable choice — but benchmark selection should reflect the investment universe "
+            "and purpose of the analysis, not a single universally 'correct' answer."
         )
 
         calc_clicked = st.button("Calculate Beta", key="t1_calc", use_container_width=False)
@@ -294,11 +294,8 @@ with tab_beta:
             with st.spinner("Fetching data and running regression..."):
                 result = cached_calculate_stock_beta(ticker1, idx1_name, period_for_calc, interval1,
                                                        start_str, end_str)
-                stock_prices = cached_prices(ticker1, period_for_calc, interval1, start_str, end_str)
-                index_prices = cached_prices(INDEX_TICKERS[idx1_name], period_for_calc, interval1,
-                                              start_str, end_str)
             st.session_state.single_result = result
-            st.session_state.single_prices = (stock_prices, index_prices, interval1)
+            st.session_state.single_prices = (result["stock_prices"], result["index_prices"], interval1)
             period_label = f"{start_str} to {end_str}" if start_str else period1
         except Exception as e:
             st.error(friendly_error(e, ticker1))
@@ -771,7 +768,8 @@ with tab_coe:
     with ce3:
         erp_input = st.number_input("Equity risk premium (%)", value=6.0, step=0.1, key="ce_erp",
                                      help=GLOSSARY["erp"])
-        st.caption("Typical India ERP range is roughly 6-6.5% - adjust to your own view.")
+        st.caption("There's no single agreed-upon India ERP figure — estimates vary by source and "
+                   "methodology. Use whatever figure you'd defend in your own research, not this default.")
 
     cost_of_equity = rf_input + beta_input * erp_input
     st.divider()

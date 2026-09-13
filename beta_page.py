@@ -774,12 +774,19 @@ with tab_coe:
         st.caption("Typical India ERP range is roughly 6-6.5% - adjust to your own view.")
 
     cost_of_equity = rf_input + beta_input * erp_input
-    st.session_state.ce_cost_of_equity = cost_of_equity  # bridged into Reverse DCF's Ke fields
     st.divider()
-    st.metric("Cost of Equity (CAPM)", f"{round(cost_of_equity, 2)}%", help=GLOSSARY["cost_of_equity"])
+    st.metric("Cost of Equity (CAPM) — live preview", f"{round(cost_of_equity, 2)}%", help=GLOSSARY["cost_of_equity"])
     st.caption(f"= {rf_input}% + ({beta_input} × {erp_input}%)")
-    st.caption("This value is available to the Reverse DCF page's Net Income and FCFE tabs "
-               "as a one-click Ke default once calculated here.")
+
+    if st.button("💾 Save this Cost of Equity", use_container_width=True):
+        st.session_state.ce_cost_of_equity = cost_of_equity  # bridged into Reverse DCF's Ke fields
+
+    if "ce_cost_of_equity" in st.session_state:
+        st.caption(f"✓ Saved: {st.session_state.ce_cost_of_equity:.2f}% — this is what the Reverse DCF page's "
+                   f"Net Income/FCFE tabs will pull in, and it stays saved even if the live inputs above change "
+                   f"or you switch pages. Click Save again after adjusting Rf/Beta/ERP to update it.")
+    else:
+        st.caption("Not saved yet — click Save above to make this available to the Reverse DCF page.")
 
 st.divider()
 st.caption("[GitHub](https://github.com/deepeshjoshii) · Source and other tools for this project.")

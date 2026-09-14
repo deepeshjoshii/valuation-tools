@@ -426,13 +426,12 @@ if ticker:
                 "detail": data.historical_net_income, "current": data.current_net_income,
                 "target_basis": "market_cap",
                 "caution": (
-                    "Recommended starting point: net income is the most reliably-scraped figure of "
-                    "the three for Indian companies, since FCFF/FCFE depend on cash-flow line items "
-                    "that are frequently missing or mismapped. It does include one-off/exceptional "
-                    "items that aren't stripped out here (asset sales, write-offs, tax credits, etc.) "
-                    "— sanity-check the current figure against the company's own reported "
-                    "normalized/adjusted profit before relying on it."
-                ),
+    "Recommended starting point because net income generally has a lower risk of "
+    "missing or mismapped data than the cash-flow line items required for FCFF/FCFE, "
+    "particularly for Indian companies. The figure may still contain one-off or "
+    "exceptional items that aren't adjusted here — check it against the company's "
+    "reported normalized/adjusted profit before relying on it."
+),
             },
             {
                 "key": "fcff", "label": "FCFF", "row_label": "FCFF (Rs Cr)",

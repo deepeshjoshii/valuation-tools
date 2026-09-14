@@ -422,7 +422,7 @@ if ticker:
         TERMINAL_GROWTH_DEFAULT = 4.0
         methodologies = [
             {
-                "key": "ni", "label": "⭐ Net Income", "row_label": "Net Income (Rs Cr)",
+                "key": "ni", "label": "Net Income", "row_label": "Net Income (Rs Cr)",
                 "detail": data.historical_net_income, "current": data.current_net_income,
                 "target_basis": "market_cap",
                 "caution": (
@@ -459,7 +459,8 @@ if ticker:
             },
         ]
 
-        tabs = st.tabs([m["label"] for m in methodologies])
+        with st.container(key="dcf_methodology_tabs"):
+            tabs = st.tabs([m["label"] for m in methodologies])
 
         for tab, cfg in zip(tabs, methodologies):
             with tab:

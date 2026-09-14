@@ -86,20 +86,44 @@ section[data-testid="stSidebar"] {{ background-color: {T['surface2']}; }}
     background-color: {T['surface1']}; border-color: {T['border']} !important;
 }}
 
-.stTabs [data-baseweb="tab-list"] {{
+/* Verified against the real rendered DOM (Streamlit's internal tab markup
+   changed to React Aria - data-testid="stTab" and role="tablist" - the
+   data-baseweb attributes these rules used to target no longer exist, so
+   this pill-shaped tab styling likely wasn't actually applying at all
+   before this fix). aria-selected is still real and unchanged. */
+.stTabs [role="tablist"] {{
     gap: 4px; background-color: {T['surface2']}; padding: 4px;
     border-radius: 999px; width: fit-content;
 }}
-.stTabs [data-baseweb="tab"] {{
+.stTabs [data-testid="stTab"] {{
     border-radius: 999px; padding: 6px 18px; color: {T['text_muted']} !important;
     font-weight: 500; font-size: 14px; background-color: transparent;
 }}
-.stTabs [data-baseweb="tab"] p {{ color: inherit !important; }}
+.stTabs [data-testid="stTab"] p {{ color: inherit !important; }}
 .stTabs [aria-selected="true"] {{
     background-color: {T['accent']}22 !important; color: {T['accent']} !important;
 }}
-.stTabs [data-baseweb="tab-highlight"] {{ display: none; }}
-.stTabs [data-baseweb="tab-border"] {{ display: none; }}
+.stTabs .react-aria-SelectionIndicator {{ display: none; }}
+
+/* "Recommended" badge under the Net Income tab specifically (dcf_page.py
+   wraps its methodology tabs in st.container(key="dcf_methodology_tabs")
+   just so this can be scoped here, rather than labeling every tab group
+   site-wide - Net Income is the first tab in that group, hence :first-child). */
+.st-key-dcf_methodology_tabs .stTabs [data-testid="stTab"]:first-child {{
+    position: relative;
+    padding-bottom: 24px !important;
+}}
+.st-key-dcf_methodology_tabs .stTabs [data-testid="stTab"]:first-child::after {{
+    content: "Recommended";
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    font-weight: 500;
+    color: {T['text_muted']};
+    white-space: nowrap;
+}}
 
 .stRadio label p, .stRadio div {{ color: {T['text']} !important; }}
 
@@ -154,16 +178,25 @@ div[class*="st-key-tile_"]:hover {{
 div[class*="st-key-tile_"] h3 {{ color: {T['text']}; margin-top: 0; }}
 div[class*="st-key-tile_"] p {{ color: {T['text_muted']}; }}
 div[class*="st-key-tile_"] .tile-cta {{ color: {T['accent']}; font-weight: 600; }}
+div[class*="st-key-tile_"] .stElementContainer {{
+    position: static !important;
+}}
 div[class*="st-key-tile_"] [data-testid="stPageLink"] {{
-    position: absolute;
-    inset: 0;
-    margin: 0;
+    position: absolute !important;
+    inset: -8px !important;
+    margin: 0 !important;
+    width: calc(100% + 16px) !important;
+    height: calc(100% + 16px) !important;
     z-index: 2;
 }}
+div[class*="st-key-tile_"] [data-testid="stPageLink"] > div {{
+    width: 100% !important;
+    height: 100% !important;
+}}
 div[class*="st-key-tile_"] [data-testid="stPageLink-NavLink"] {{
-    display: block;
-    width: 100%;
-    height: 100%;
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
 }}
 div[class*="st-key-tile_"] [data-testid="stPageLink-NavLink"] * {{
     opacity: 0;
